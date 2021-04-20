@@ -3,8 +3,12 @@
 import os
 import time
 import logging
+import json
 from common.server import Server
 
+CONFIG_PATH = "./config/server_config.json"
+DEFAULT_PORT = 12345
+DEFAULT_LISTEN_BACKLOG = 5
 
 def parse_config_params():
 	""" Parse env variables to find program config params
@@ -16,9 +20,27 @@ def parse_config_params():
 	returns a map with the env variables
 	"""
 	config_params = {}
+	config = {}
+
+	if os.path.exists(CONFIG_PATH):
+		with open(CONFIG_PATH, "r") as config_file:
+			config = json.loads(config_file.read())
+
 	try:
-		config_params["port"] = int(os.environ["SERVER_PORT"])
-		config_params["listen_backlog"] = int(os.environ["SERVER_LISTEN_BACKLOG"])
+		if "SERVER_PORT" in os.environ:
+			config_params["port"] = int(os.environ["SERVER_PORT"])
+		elif "SERVER_PORT" in config:
+			config_params["port"] = int(config["SERVER_PORT"])
+		else:
+			config_params["port"] = DEFAULT_PORT
+
+		if "SERVER_LISTEN_BACKLOG" in os.environ:
+			config_params["listen_backlog"] = int(os.environ["SERVER_LISTEN_BACKLOG"])
+		elif "SERVER_LISTEN_BACKLOG" in config:
+			config_params["listen_backlog"] = int(config["SERVER_LISTEN_BACKLOG"])
+		else:
+			config_params["listen_backlog"] = DEFAULT_LISTEN_BACKLOG
+
 	except KeyError as e:
 		raise KeyError("Key was not found. Error: {} .Aborting server".format(e))
 	except ValueError as e:

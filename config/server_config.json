@@ -1,0 +1,6 @@
+{
+    "PYTHONUNBUFFERED": "1",
+    "SERVER_IP": "server",
+    "SERVER_PORT": "12345",
+    "SERVER_LISTEN_BACKLOG": "5"
+}

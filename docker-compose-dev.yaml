@@ -11,6 +11,8 @@ services:
       - SERVER_LISTEN_BACKLOG=5
     networks:
       - testing_net
+    volumes:
+      - ./config:/config
 
   client1:
     container_name: client1
@@ -23,6 +25,8 @@ services:
       - CLI_LOOP_PERIOD=10s
     networks:
       - testing_net
+    volumes:
+      - ./config:/config
     depends_on:
       - server
 
