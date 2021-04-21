@@ -1,6 +1,5 @@
 import os
 import unittest
-import subprocess
 
 class TestNetcat(unittest.TestCase):
     def test_message_ok(self):
