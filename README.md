@@ -1,3 +1,7 @@
+# Ejercicio 3
+
+Dentro de la carpeta `test` correr los tests utilizando el comando `python3 -m unittest test.py`
+
 # Docker Compose Init
 El siguiente ejemplo es un cliente-servidor el cual corre en containers
 con la ayuda de [docker-compose](https://docs.docker.com/compose/). El presente
