@@ -10,7 +10,6 @@ import (
 	"log"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 
 	"github.com/7574-sistemas-distribuidos/docker-compose-init/client/common"
@@ -23,38 +22,25 @@ type ClientConfigJSON struct {
 	LoopPeriod    string `json:"CLI_LOOP_PERIOD"`
 }
 
-func LoadConfigFromFile() (common.ClientConfig) {
+func InitConfigFromFile() (ClientConfigJSON, error) {
+	var clientConfigJSON ClientConfigJSON
+
 	jsonFile, err := os.Open("./config/client_config.json")
 	if err != nil {
-		log.Fatalf("%s", err)
+		return clientConfigJSON, err
 	}
 	byteValue, _ := ioutil.ReadAll(jsonFile)
-	var clientConfig common.ClientConfig
-	var clientConfigJSON ClientConfigJSON
 	err = json.Unmarshal(byteValue, &clientConfigJSON)
 	if err != nil {
-		log.Fatalf("%s", err)
+		return clientConfigJSON, err
 	}
-	loop_lapse, err := time.ParseDuration(clientConfigJSON.LoopLapse)
-	if err != nil {
-		log.Fatalf("%s", err)
-	}
-	loop_period, err := time.ParseDuration(clientConfigJSON.LoopPeriod)
-	if err != nil {
-		log.Fatalf("%s", err)
-	}
-	clientConfig = common.ClientConfig{
-		ServerAddress: clientConfigJSON.ServerAddress,
-		ID:            clientConfigJSON.ID,
-		LoopLapse:     loop_lapse,
-		LoopPeriod:    loop_period,
-	}
-	return clientConfig
+
+	return clientConfigJSON, nil
 }
 
-// InitConfig Function that uses viper library to parse env variables. If
+// InitConfigFromEnvVariables Function that uses viper library to parse env variables. If
 // some of the variables cannot be parsed, an error is returned
-func InitConfig() (*viper.Viper, error) {
+func InitConfigFromEnvVariables() (*viper.Viper, error) {
 	v := viper.New()
 
 	// Configure viper to read env variables with the CLI_ prefix
@@ -67,42 +53,79 @@ func InitConfig() (*viper.Viper, error) {
 	v.BindEnv("loop", "period")
 	v.BindEnv("loop", "lapse")
 
-	// Parse time.Duration variables and return an error
-	// if those variables cannot be parsed
-	if _, err := time.ParseDuration(v.GetString("loop_lapse")); err != nil {
-		return nil, errors.Wrapf(err, "Could not parse CLI_LOOP_LAPSE env var as time.Duration.")
-	}
-
-	if _, err := time.ParseDuration(v.GetString("loop_period")); err != nil {
-		return nil, errors.Wrapf(err, "Could not parse CLI_LOOP_PERIOD env var as time.Duration.")
-	}
-
 	return v, nil
 }
 
-func LoadConfigFromEnvVariables() (common.ClientConfig) {
-	v, err := InitConfig()
-	if err != nil {
-		log.Fatalf("%s", err)
+func LoadConfig() (common.ClientConfig) {
+	vEnv, errEnv := InitConfigFromEnvVariables()
+	LogError(errEnv)
+
+	vConfig, errConfig := InitConfigFromFile()
+	LogError(errConfig)
+
+	var server_address string 
+	var id string            
+	var loop_lapse time.Duration     
+	var loop_period time.Duration
+	var err error
+
+	if vEnv.IsSet("server_address") {
+		server_address = vEnv.GetString("server_address")
+	} else if vConfig.ServerAddress != "" {
+		server_address = vConfig.ServerAddress
+	} else {
+		server_address = "server:12345"
+	}
+
+	if vEnv.IsSet("id") {
+		id = vEnv.GetString("id")
+	} else if vConfig.ID != "" {
+		id = vConfig.ID
+	} else {
+		id = "1"
+	}
+
+	if vEnv.IsSet("loop_lapse") {
+		loop_lapse, err = time.ParseDuration(vEnv.GetString("loop_lapse"))
+		LogError(err)
+	} else if vConfig.LoopLapse != "" {
+		loop_lapse, err = time.ParseDuration(vConfig.LoopLapse)
+		LogError(err)
+	} else {
+		loop_lapse, err = time.ParseDuration("1m2s")
+		LogError(err)
+	}
+
+	if vEnv.IsSet("loop_period") {
+		loop_period, err = time.ParseDuration(vEnv.GetString("loop_period"))
+		LogError(err)
+	} else if vConfig.LoopPeriod != "" {
+		loop_period, err = time.ParseDuration(vConfig.LoopPeriod)
+		LogError(err)
+	} else {
+		loop_period, err = time.ParseDuration("10s")
+		LogError(err)
 	}
 
 	clientConfig := common.ClientConfig{
-		ServerAddress: v.GetString("server_address"),
-		ID:            v.GetString("id"),
-		LoopLapse:     v.GetDuration("loop_lapse"),
-		LoopPeriod:    v.GetDuration("loop_period"),
+		ServerAddress: server_address,
+		ID:            id,
+		LoopLapse:     loop_lapse,
+		LoopPeriod:    loop_period,
 	}
 
 	return clientConfig
 }
 
+func LogError(err error) () {
+	if (err != nil) {
+		log.Fatalf("%s", err)
+	}
+}
 
 func main() {
-	clientConfig := LoadConfigFromFile()
+	clientConfig := LoadConfig()
 	log.Printf("Client config: %v", clientConfig)
-
-
-	//clientConfig := LoadConfigFromEnvVariables()
 
 	client := common.NewClient(clientConfig)
 	client.StartClientLoop()
