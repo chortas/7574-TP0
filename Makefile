@@ -26,9 +26,14 @@ docker-compose-up: docker-image
 
 docker-compose-down:
 	docker-compose -f docker-compose-dev.yaml stop -t 1
-	docker-compose -f docker-compose-dev.yaml down
+	docker-compose -f docker-compose-dev.yaml down --remove-orphans
 .PHONY: docker-compose-down
 
 docker-compose-logs:
 	docker-compose -f docker-compose-dev.yaml logs -f
 .PHONY: docker-compose-logs
+
+run-test: docker-compose-up 
+	cd test && python3 -m unittest test.py
+	make docker-compose-down
+.PHONY: run-test
